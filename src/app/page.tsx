@@ -13,7 +13,7 @@ import {
   moroccanIdHelp,
   moroccanIdPattern,
 } from "@/lib/customer-schema";
-import { CreditDecision } from "@/lib/credit-evaluation";
+import { type CreditDecision } from "@/lib/credit-evaluation";
 import { normalizeCustomerInput } from "@/lib/normalize-customer";
 
 type Step = "search" | "customer_form" | "customer_review" | "credit" | "application_review" | "saved";
