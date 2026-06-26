@@ -27,9 +27,9 @@ LangGraph, Groq, observability, Docker, GitHub Actions, and Vercel deployment ar
 Create `.env.local` from `.env.example` and fill your own values:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=
+SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
-SUPABASE_SECRET_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 GROQ_API_KEY=
 ```
 
