@@ -58,7 +58,13 @@ npm test
 npm run build
 ```
 
-GitHub Actions runs lint, tests, and build on pushes and pull requests to `main`.
+GitHub Actions runs lint, tests, build, and a Python LangGraph workflow smoke test on pushes and pull requests to `main`.
+
+## Workflow Assets
+
+- `src/lib/credit-graph.ts` - runtime LangGraph workflow used by the application.
+- `workflows/credit_pre_evaluation.py` - Python LangGraph workflow variant.
+- `workflows/test_credit_pre_evaluation.py` - smoke test for the Python workflow.
 
 ## Internal Pages
 
