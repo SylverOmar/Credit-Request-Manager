@@ -1,67 +1,24 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { calculateCreditEvaluation, toNumber } from "@/lib/credit-evaluation";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 const creditCheckRequestSchema = z.object({
   application_id: z.string().uuid("application_id must be a valid UUID."),
 });
 
-type Decision = "PRE_APPROVED" | "NEEDS_REVIEW" | "NOT_ELIGIBLE" | "REJECTED_INPUT";
-
-type DurationUnit = "months" | "years";
-
-const roundMoney = (value: number) => Math.round(value * 100) / 100;
-const roundRatio = (value: number) => Math.round(value * 10000) / 10000;
-
-function toNumber(value: number | string | null | undefined) {
-  return Number(value ?? 0);
+function isNotFoundError(error: { code?: string } | null) {
+  return error?.code === "PGRST116";
 }
 
-function getDurationInMonths(durationValue: number, durationUnit: DurationUnit) {
-  return durationUnit === "years" ? durationValue * 12 : durationValue;
-}
-
-function buildDecision(monthlyIncome: number, durationInMonths: number, debtRatio: number, availableAfterCredit: number) {
-  const reasons: string[] = [];
-  let decision: Decision;
-
-  if (monthlyIncome <= 0 || durationInMonths <= 0) {
-    decision = "REJECTED_INPUT";
-
-    if (monthlyIncome <= 0) {
-      reasons.push("Monthly income must be greater than 0.");
-    }
-
-    if (durationInMonths <= 0) {
-      reasons.push("Credit duration must be greater than 0 months.");
-    }
-
-    return { decision, reasons };
-  }
-
-  if (debtRatio <= 0.35 && availableAfterCredit >= 1500) {
-    decision = "PRE_APPROVED";
-    reasons.push("Debt ratio is at or below 35% and available income after credit is at least 1,500 MAD.");
-    return { decision, reasons };
-  }
-
-  if (debtRatio <= 0.5 && availableAfterCredit >= 500) {
-    decision = "NEEDS_REVIEW";
-    reasons.push("Debt ratio is at or below 50% and available income after credit is at least 500 MAD.");
-    return { decision, reasons };
-  }
-
-  decision = "NOT_ELIGIBLE";
-
-  if (debtRatio > 0.5) {
-    reasons.push("Debt ratio is above 50%.");
-  }
-
-  if (availableAfterCredit < 500) {
-    reasons.push("Available income after credit is below 500 MAD.");
-  }
-
-  return { decision, reasons };
+function databaseError(correlationId: string, errorMessage = "Database error.") {
+  return NextResponse.json(
+    {
+      correlation_id: correlationId,
+      error: errorMessage,
+    },
+    { status: 500 },
+  );
 }
 
 export async function POST(request: Request) {
@@ -90,7 +47,21 @@ export async function POST(request: Request) {
       .eq("application_id", applicationId)
       .single();
 
-    if (applicationError || !application) {
+    if (applicationError) {
+      if (isNotFoundError(applicationError)) {
+        return NextResponse.json(
+          {
+            correlation_id: correlationId,
+            error: "Credit application not found.",
+          },
+          { status: 404 },
+        );
+      }
+
+      return databaseError(correlationId, applicationError.message);
+    }
+
+    if (!application) {
       return NextResponse.json(
         {
           correlation_id: correlationId,
@@ -106,7 +77,21 @@ export async function POST(request: Request) {
       .eq("bank_customer_id", application.bank_customer_id)
       .single();
 
-    if (customerError || !customer) {
+    if (customerError) {
+      if (isNotFoundError(customerError)) {
+        return NextResponse.json(
+          {
+            correlation_id: correlationId,
+            error: "Related customer not found.",
+          },
+          { status: 404 },
+        );
+      }
+
+      return databaseError(correlationId, customerError.message);
+    }
+
+    if (!customer) {
       return NextResponse.json(
         {
           correlation_id: correlationId,
@@ -116,39 +101,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const annualIncome = toNumber(customer.annual_income);
-    const requestedAmount = toNumber(application.requested_amount);
-    const durationValue = toNumber(application.duration_value);
-    const monthlyCharges = toNumber(application.monthly_charges);
-    const durationInMonths = getDurationInMonths(durationValue, application.duration_unit);
-
-    const monthlyIncome = annualIncome / 12;
-    const estimatedMonthlyPayment = durationInMonths > 0 ? requestedAmount / durationInMonths : 0;
-    const availableBeforeCredit = monthlyIncome - monthlyCharges;
-    const availableAfterCredit = availableBeforeCredit - estimatedMonthlyPayment;
-    const debtRatio = monthlyIncome > 0 ? (monthlyCharges + estimatedMonthlyPayment) / monthlyIncome : 0;
-
-    const { decision, reasons } = buildDecision(
-      monthlyIncome,
-      durationInMonths,
-      debtRatio,
-      availableAfterCredit,
-    );
+    const evaluation = calculateCreditEvaluation({
+      annual_income: toNumber(customer.annual_income),
+      requested_amount: toNumber(application.requested_amount),
+      duration_value: toNumber(application.duration_value),
+      duration_unit: application.duration_unit,
+      monthly_charges: toNumber(application.monthly_charges),
+    });
 
     return NextResponse.json({
       correlation_id: correlationId,
       application_id: application.application_id,
       bank_customer_id: application.bank_customer_id,
-      metrics: {
-        monthly_income: roundMoney(monthlyIncome),
-        estimated_monthly_payment: roundMoney(estimatedMonthlyPayment),
-        available_before_credit: roundMoney(availableBeforeCredit),
-        available_after_credit: roundMoney(availableAfterCredit),
-        debt_ratio: roundRatio(debtRatio),
-        duration_in_months: durationInMonths,
-      },
-      decision,
-      reasons,
+      metrics: evaluation.metrics,
+      decision: evaluation.decision,
+      reasons: evaluation.reasons,
     });
   } catch (error) {
     return NextResponse.json(
