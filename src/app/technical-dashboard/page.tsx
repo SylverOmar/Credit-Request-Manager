@@ -31,7 +31,7 @@ const technicalKpis = [
   ["Tests", "Vitest + GitHub Actions"],
   ["Docker", "Standalone Next.js"],
   ["Vercel", "Production auto-deploy"],
-  ["Health API", "/api/health"],
+  ["Observabilite", "Statut et traces par correlation_id"],
 ];
 
 const recentLogs = [
@@ -52,7 +52,7 @@ export default function TechnicalDashboardPage() {
               Dashboard technique credit
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-              Suivi interne du workflow LangGraph, des agents Groq, des decisions et des livrables
+              Suivi interne du workflow LangGraph, des agents Groq, des decisions et des controles
               de validation.
             </p>
           </div>
@@ -60,9 +60,6 @@ export default function TechnicalDashboardPage() {
             <Link className="rounded-md border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-800" href="/">
               Demande
             </Link>
-            <a className="rounded-md border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-800" href="/api/health">
-              Health
-            </a>
           </nav>
         </div>
       </section>
@@ -78,7 +75,7 @@ export default function TechnicalDashboardPage() {
             <div>
               <h2 className="text-xl font-semibold">Kill-switch</h2>
               <p className="mt-1 text-sm text-slate-600">
-                Controle prevu par le runbook. Mode lecture pour le MVP de demonstration.
+                Controle operationnel documente pour interrompre le workflow en cas d&apos;incident.
               </p>
             </div>
             <div className="flex gap-2">

@@ -408,15 +408,6 @@ export default function Home() {
           <Link className="rounded-md border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-800 transition hover:bg-slate-50" href="/technical-dashboard">
             Dashboard technique
           </Link>
-          <a className="rounded-md border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-800 transition hover:bg-slate-50" href="/api/health">
-            Health
-          </a>
-          <a className="rounded-md border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-800 transition hover:bg-slate-50" href="https://github.com/SylverOmar/Credit-Request-Manager/blob/main/AGENT_CARD.md">
-            Agent Card
-          </a>
-          <a className="rounded-md border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-800 transition hover:bg-slate-50" href="https://github.com/SylverOmar/Credit-Request-Manager/blob/main/RUNBOOK.md">
-            Runbook
-          </a>
         </nav>
       </section>
 

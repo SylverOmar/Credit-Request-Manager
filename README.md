@@ -21,8 +21,12 @@ Bank-worker web intake platform for customer identity confirmation and credit re
 - Tailwind CSS
 - Supabase Postgres
 - Zod validation
-
-LangGraph, Groq, observability, Docker, GitHub Actions, and Vercel deployment are planned next. They are not part of the first stable intake slice yet.
+- LangGraph
+- Groq API
+- Vitest
+- GitHub Actions
+- Docker
+- Vercel
 
 ## Environment
 
@@ -61,7 +65,6 @@ GitHub Actions runs lint, tests, and build on pushes and pull requests to `main`
 - `/` - bank-worker intake and credit request flow.
 - `/technical-dashboard` - workflow, LLM, technical KPI, log, and kill-switch overview.
 - `/dashboard` - alias for the technical dashboard.
-- `/api/health` - runtime health/status JSON.
 
 ## Database
 
@@ -100,18 +103,19 @@ Possible decisions:
 - `NOT_ELIGIBLE`
 - `REJECTED_INPUT`
 
-## Exercise Requirements
+## Validation Scope
 
-The final project must include:
+Implemented deliverables:
 
 - Multi-agent architecture with Supervisor or Router.
 - LangGraph implementation.
 - Monitoring/observability with correlation IDs.
 - Automated tests with GitHub Actions.
 - Docker containerization.
-- Cloud deployment, planned on Vercel.
+- Cloud deployment on Vercel.
 - Agent Card.
 - Incident runbook.
-- Technical documentation and demo video.
+- Technical documentation delivered with the project submission package.
+- Prompt versioning under `prompts/`.
 
-See `PROJECT_PLAN.md` for the active roadmap.
+The repository contains the runnable application, workflow assets, Agent Card, Runbook, prompts, CI, Docker, and deployment configuration.
