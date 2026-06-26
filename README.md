@@ -10,6 +10,7 @@ Bank-worker web intake platform for customer identity confirmation and credit re
 - Create new customer records with an internal bank UUID.
 - Capture credit request parameters after customer confirmation.
 - Store credit applications in Supabase.
+- Run a deterministic backend credit pre-evaluation from `application_id`.
 - Keep private identifiers out of future AI workflow input; use `bank_customer_id` or `application_id`.
 
 ## Stack
@@ -64,6 +65,29 @@ Important customer identifiers:
 
 - `national_id`: Moroccan CIN/CNIE used by the bank worker for lookup.
 - `bank_customer_id`: internal UUID used by the application and future AI workflow.
+
+## API
+
+### `POST /api/credit/check`
+
+Runs a deterministic credit pre-evaluation from an existing credit application.
+
+Request body:
+
+```json
+{
+  "application_id": "uuid"
+}
+```
+
+The response includes a generated `correlation_id`, the `application_id`, the `bank_customer_id`, computed financial metrics, a deterministic decision, and reasons. It does not return `national_id`, CIN, or CNIE.
+
+Possible decisions:
+
+- `PRE_APPROVED`
+- `NEEDS_REVIEW`
+- `NOT_ELIGIBLE`
+- `REJECTED_INPUT`
 
 ## Exercise Requirements
 
