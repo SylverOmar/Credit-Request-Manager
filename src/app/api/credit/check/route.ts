@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
     const { data: customer, error: customerError } = await supabase
       .from("customers")
-      .select("bank_customer_id,annual_income")
+      .select("bank_customer_id,age,marital_status,children_count,annual_income")
       .eq("bank_customer_id", application.bank_customer_id)
       .single();
 
@@ -92,6 +92,9 @@ export async function POST(request: Request) {
     const durationValue = toNumber(application.duration_value);
     const monthlyCharges = toNumber(application.monthly_charges);
     const evaluation = await runCreditEvaluationGraph({
+      age: toNumber(customer.age),
+      marital_status: customer.marital_status,
+      children_count: toNumber(customer.children_count),
       annual_income: annualIncome,
       requested_amount: requestedAmount,
       duration_value: durationValue,

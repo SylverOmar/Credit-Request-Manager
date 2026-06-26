@@ -11,6 +11,7 @@ Bank-worker web intake platform for customer identity confirmation and credit re
 - Capture credit request parameters after customer confirmation.
 - Store credit applications in Supabase.
 - Run a deterministic backend credit pre-evaluation from `application_id`.
+- Generate Groq-backed specialist analyses and a concise report through LangGraph.
 - Keep private identifiers out of future AI workflow input; use `bank_customer_id` or `application_id`.
 
 ## Stack
@@ -55,6 +56,13 @@ npm run build
 
 GitHub Actions runs lint, tests, and build on pushes and pull requests to `main`.
 
+## Internal Pages
+
+- `/` - bank-worker intake and credit request flow.
+- `/technical-dashboard` - workflow, LLM, technical KPI, log, and kill-switch overview.
+- `/dashboard` - alias for the technical dashboard.
+- `/api/health` - runtime health/status JSON.
+
 ## Database
 
 The Supabase schema is in `database/schema.sql`.
@@ -83,7 +91,7 @@ Request body:
 }
 ```
 
-The response includes a generated `correlation_id`, the `application_id`, the `bank_customer_id`, computed financial metrics, a deterministic decision, and reasons. It does not return `national_id`, CIN, or CNIE.
+The response includes a generated `correlation_id`, the `application_id`, the `bank_customer_id`, computed financial metrics, score, deterministic decision, Groq-backed report, LLM logs, and reasons. It does not return `national_id`, CIN, or CNIE.
 
 Possible decisions:
 

@@ -2,6 +2,9 @@ export type CreditDecision = "PRE_APPROVED" | "NEEDS_REVIEW" | "NOT_ELIGIBLE" | 
 export type DurationUnit = "months" | "years";
 
 export type CreditEvaluationInput = {
+  age?: number;
+  marital_status?: string;
+  children_count?: number;
   annual_income: number;
   requested_amount: number;
   duration_value: number;
@@ -20,6 +23,8 @@ export type CreditEvaluationResult = {
   };
   decision: CreditDecision;
   reasons: string[];
+  score: number;
+  human_review_required: boolean;
 };
 
 const roundMoney = (value: number) => Math.round(value * 100) / 100;
@@ -74,6 +79,8 @@ export function evaluateCredit(input: CreditEvaluationInput): CreditEvaluationRe
     }
   }
 
+  const score = scoreCredit(decision, debtRatio, availableAfterCredit);
+
   return {
     metrics: {
       monthly_income: roundMoney(monthlyIncome),
@@ -85,5 +92,14 @@ export function evaluateCredit(input: CreditEvaluationInput): CreditEvaluationRe
     },
     decision,
     reasons,
+    score,
+    human_review_required: decision === "NEEDS_REVIEW" || (score >= 55 && score <= 74),
   };
+}
+
+function scoreCredit(decision: CreditDecision, debtRatio: number, availableAfterCredit: number) {
+  if (decision === "REJECTED_INPUT") return 0;
+  if (decision === "NOT_ELIGIBLE") return Math.max(20, Math.min(54, Math.round(70 - debtRatio * 100)));
+  if (decision === "NEEDS_REVIEW") return Math.max(55, Math.min(74, Math.round(85 - debtRatio * 100)));
+  return Math.max(75, Math.min(95, Math.round(100 - debtRatio * 80 + availableAfterCredit / 1000)));
 }

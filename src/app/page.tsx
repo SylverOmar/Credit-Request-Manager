@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import {
   CreditApplication,
   CreditRequestInput,
@@ -35,6 +36,10 @@ type CreditCheckResult = {
   correlation_id: string;
   application_id: string;
   bank_customer_id: string;
+  status?: string;
+  decision_label?: string;
+  score: number;
+  human_review_required: boolean;
   metrics: {
     monthly_income: number;
     estimated_monthly_payment: number;
@@ -45,6 +50,28 @@ type CreditCheckResult = {
   };
   decision: CreditDecision;
   reasons: string[];
+  report?: {
+    executive_summary: string;
+    strengths: string[];
+    watch_points: string[];
+    recommendation: string;
+    limitations: string;
+  };
+  agent_analyses?: Array<{
+    agent_id: string;
+    status: string;
+    observations: string[];
+    red_flags: string[];
+  }>;
+  llm_logs?: Array<{
+    node_name: string;
+    agent_name: string;
+    model_name: string;
+    latency_ms: number;
+    status: string;
+  }>;
+  graph_steps?: string[];
+  warnings?: string[];
 };
 
 const emptyCustomer: CustomerDraft = {
@@ -374,6 +401,23 @@ export default function Home() {
             Espace conseiller bancaire
           </div>
         </div>
+        <nav className="mx-auto flex max-w-6xl flex-wrap gap-2 px-5 pb-5 text-sm">
+          <Link className="rounded-md border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-800 transition hover:bg-slate-50" href="/">
+            Demande
+          </Link>
+          <Link className="rounded-md border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-800 transition hover:bg-slate-50" href="/technical-dashboard">
+            Dashboard technique
+          </Link>
+          <a className="rounded-md border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-800 transition hover:bg-slate-50" href="/api/health">
+            Health
+          </a>
+          <a className="rounded-md border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-800 transition hover:bg-slate-50" href="https://github.com/SylverOmar/Credit-Request-Manager/blob/main/AGENT_CARD.md">
+            Agent Card
+          </a>
+          <a className="rounded-md border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-800 transition hover:bg-slate-50" href="https://github.com/SylverOmar/Credit-Request-Manager/blob/main/RUNBOOK.md">
+            Runbook
+          </a>
+        </nav>
       </section>
 
       <div className="mx-auto grid max-w-6xl gap-6 px-5 py-8 lg:grid-cols-[360px_1fr]">
@@ -799,6 +843,8 @@ function CreditCheckPanel({
   const rows: Array<[string, string]> = result
     ? [
         ["Decision", decisionLabel(result.decision)],
+        ["Score", `${result.score}/100`],
+        ["Revue humaine", result.human_review_required ? "Oui" : "Non"],
         ["Revenu mensuel", formatCurrency(result.metrics.monthly_income)],
         ["Mensualite estimee", formatCurrency(result.metrics.estimated_monthly_payment)],
         ["Disponible avant credit", formatCurrency(result.metrics.available_before_credit)],
@@ -835,6 +881,18 @@ function CreditCheckPanel({
       {result ? (
         <>
           <InfoGrid rows={rows} />
+          {result.report ? (
+            <div className="mt-4 rounded-md border border-teal-200 bg-teal-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+                Rapport
+              </p>
+              <p className="mt-2 text-sm font-semibold text-slate-950">
+                {result.report.executive_summary}
+              </p>
+              <p className="mt-3 text-sm text-slate-700">{result.report.recommendation}</p>
+              <p className="mt-3 text-xs text-slate-600">{result.report.limitations}</p>
+            </div>
+          ) : null}
           <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
               Motifs
@@ -845,6 +903,37 @@ function CreditCheckPanel({
               ))}
             </ul>
           </div>
+          {result.agent_analyses?.length ? (
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {result.agent_analyses.map((analysis) => (
+                <div key={analysis.agent_id} className="rounded-md border border-slate-200 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    {analysis.agent_id}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">Statut: {analysis.status}</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
+                    {analysis.observations.map((observation) => (
+                      <li key={observation}>{observation}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {result.llm_logs?.length ? (
+            <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Traces LLM
+              </p>
+              <div className="mt-2 grid gap-2 text-sm text-slate-700 md:grid-cols-2">
+                {result.llm_logs.map((log) => (
+                  <div key={`${log.node_name}-${log.agent_name}`} className="rounded border border-slate-200 bg-white p-3">
+                    {log.agent_name} - {log.status} - {log.latency_ms} ms
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </>
       ) : null}
     </div>

@@ -8,6 +8,8 @@ export function GET() {
       web: "ok",
       supabase_env: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
       groq_env: Boolean(process.env.GROQ_API_KEY),
+      langgraph: "enabled",
+      dashboard: "/technical-dashboard",
     },
   });
 }
