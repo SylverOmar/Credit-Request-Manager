@@ -63,8 +63,8 @@ GitHub Actions runs lint, tests, build, and a Python LangGraph workflow smoke te
 ## Workflow Assets
 
 - `src/lib/credit-graph.ts` - runtime LangGraph workflow used by the application.
-- `workflows/credit_pre_evaluation.py` - Python LangGraph workflow variant.
-- `workflows/test_credit_pre_evaluation.py` - smoke test for the Python workflow.
+- `.github/workflows/credit-pre-evaluation/credit_pre_evaluation.py` - Python LangGraph workflow variant.
+- `.github/workflows/credit-pre-evaluation/test_credit_pre_evaluation.py` - smoke test for the Python workflow.
 
 ## Internal Pages
 

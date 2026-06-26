@@ -46,10 +46,10 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: workflows/requirements.txt
+          cache-dependency-path: .github/workflows/credit-pre-evaluation/requirements.txt
 
       - name: Install workflow dependencies
-        run: pip install -r workflows/requirements.txt
+        run: pip install -r .github/workflows/credit-pre-evaluation/requirements.txt
 
       - name: Run LangGraph workflow smoke test
-        run: python workflows/test_credit_pre_evaluation.py
+        run: python .github/workflows/credit-pre-evaluation/test_credit_pre_evaluation.py
