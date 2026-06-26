@@ -1,24 +1,18 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { calculateCreditEvaluation, toNumber } from "@/lib/credit-evaluation";
+import { runCreditEvaluationGraph } from "@/lib/credit-graph";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 const creditCheckRequestSchema = z.object({
   application_id: z.string().uuid("application_id must be a valid UUID."),
 });
 
-function isNotFoundError(error: { code?: string } | null) {
-  return error?.code === "PGRST116";
+function toNumber(value: number | string | null | undefined) {
+  return Number(value ?? 0);
 }
 
-function databaseError(correlationId: string, errorMessage = "Database error.") {
-  return NextResponse.json(
-    {
-      correlation_id: correlationId,
-      error: errorMessage,
-    },
-    { status: 500 },
-  );
+function isNotFound(error: { code?: string } | null) {
+  return error?.code === "PGRST116";
 }
 
 export async function POST(request: Request) {
@@ -47,21 +41,17 @@ export async function POST(request: Request) {
       .eq("application_id", applicationId)
       .single();
 
-    if (applicationError) {
-      if (isNotFoundError(applicationError)) {
-        return NextResponse.json(
-          {
-            correlation_id: correlationId,
-            error: "Credit application not found.",
-          },
-          { status: 404 },
-        );
-      }
-
-      return databaseError(correlationId, applicationError.message);
+    if (applicationError && !isNotFound(applicationError)) {
+      return NextResponse.json(
+        {
+          correlation_id: correlationId,
+          error: "Unable to load credit application.",
+        },
+        { status: 500 },
+      );
     }
 
-    if (!application) {
+    if (isNotFound(applicationError) || !application) {
       return NextResponse.json(
         {
           correlation_id: correlationId,
@@ -77,21 +67,17 @@ export async function POST(request: Request) {
       .eq("bank_customer_id", application.bank_customer_id)
       .single();
 
-    if (customerError) {
-      if (isNotFoundError(customerError)) {
-        return NextResponse.json(
-          {
-            correlation_id: correlationId,
-            error: "Related customer not found.",
-          },
-          { status: 404 },
-        );
-      }
-
-      return databaseError(correlationId, customerError.message);
+    if (customerError && !isNotFound(customerError)) {
+      return NextResponse.json(
+        {
+          correlation_id: correlationId,
+          error: "Unable to load related customer.",
+        },
+        { status: 500 },
+      );
     }
 
-    if (!customer) {
+    if (isNotFound(customerError) || !customer) {
       return NextResponse.json(
         {
           correlation_id: correlationId,
@@ -101,21 +87,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const evaluation = calculateCreditEvaluation({
-      annual_income: toNumber(customer.annual_income),
-      requested_amount: toNumber(application.requested_amount),
-      duration_value: toNumber(application.duration_value),
+    const annualIncome = toNumber(customer.annual_income);
+    const requestedAmount = toNumber(application.requested_amount);
+    const durationValue = toNumber(application.duration_value);
+    const monthlyCharges = toNumber(application.monthly_charges);
+    const evaluation = await runCreditEvaluationGraph({
+      annual_income: annualIncome,
+      requested_amount: requestedAmount,
+      duration_value: durationValue,
       duration_unit: application.duration_unit,
-      monthly_charges: toNumber(application.monthly_charges),
-    });
+      monthly_charges: monthlyCharges,
+    }, correlationId);
 
     return NextResponse.json({
       correlation_id: correlationId,
       application_id: application.application_id,
       bank_customer_id: application.bank_customer_id,
-      metrics: evaluation.metrics,
-      decision: evaluation.decision,
-      reasons: evaluation.reasons,
+      ...evaluation,
     });
   } catch (error) {
     return NextResponse.json(

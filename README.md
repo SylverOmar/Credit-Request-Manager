@@ -49,8 +49,11 @@ Open `http://localhost:3000`.
 
 ```bash
 npm run lint
+npm test
 npm run build
 ```
+
+GitHub Actions runs lint, tests, and build on pushes and pull requests to `main`.
 
 ## Database
 
@@ -70,7 +73,7 @@ Important customer identifiers:
 
 ### `POST /api/credit/check`
 
-Runs a deterministic credit pre-evaluation from an existing credit application.
+Runs a deterministic credit pre-evaluation from an existing credit application. This returns a recommendation for review, not a final bank decision.
 
 Request body:
 

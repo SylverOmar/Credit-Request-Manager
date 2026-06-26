@@ -13,7 +13,7 @@ import {
   moroccanIdHelp,
   moroccanIdPattern,
 } from "@/lib/customer-schema";
-import { type CreditDecision } from "@/lib/credit-evaluation";
+import type { CreditDecision } from "@/lib/credit-evaluation";
 import { normalizeCustomerInput } from "@/lib/normalize-customer";
 
 type Step = "search" | "customer_form" | "customer_review" | "credit" | "application_review" | "saved";
@@ -31,7 +31,7 @@ type CreditRequestDraft = Omit<
   duration_value: string;
   monthly_charges: string;
 };
-type CreditEvaluationResult = {
+type CreditCheckResult = {
   correlation_id: string;
   application_id: string;
   bank_customer_id: string;
@@ -45,10 +45,6 @@ type CreditEvaluationResult = {
   };
   decision: CreditDecision;
   reasons: string[];
-};
-type ApiErrorPayload = {
-  error?: string;
-  correlation_id?: string;
 };
 
 const emptyCustomer: CustomerDraft = {
@@ -68,13 +64,6 @@ const emptyCreditRequest: CreditRequestDraft = {
   monthly_charges: "",
 };
 
-const decisionLabels: Record<CreditDecision, string> = {
-  PRE_APPROVED: "Pre-evaluation favorable",
-  NEEDS_REVIEW: "A verifier par un conseiller",
-  NOT_ELIGIBLE: "Non eligible selon les criteres actuels",
-  REJECTED_INPUT: "Donnees insuffisantes pour evaluer",
-};
-
 function statusLabel(value: CustomerInput["marital_status"]) {
   return maritalStatusOptions.find((option) => option.value === value)?.label ?? value;
 }
@@ -89,10 +78,6 @@ function formatCurrency(value: number) {
     currency: "MAD",
     maximumFractionDigits: 0,
   }).format(value);
-}
-
-function formatRatio(value: number) {
-  return `${(value * 100).toFixed(2)}%`;
 }
 
 function normalizeCustomer(raw: Customer): CustomerInput {
@@ -144,9 +129,9 @@ export default function Home() {
   const [originalCustomer, setOriginalCustomer] = useState<CustomerInput | null>(null);
   const [creditRequest, setCreditRequest] = useState<CreditRequestDraft>(emptyCreditRequest);
   const [savedApplication, setSavedApplication] = useState<CreditApplication | null>(null);
-  const [evaluation, setEvaluation] = useState<CreditEvaluationResult | null>(null);
-  const [evaluationError, setEvaluationError] = useState("");
-  const [evaluationLoading, setEvaluationLoading] = useState(false);
+  const [creditCheck, setCreditCheck] = useState<CreditCheckResult | null>(null);
+  const [creditCheckError, setCreditCheckError] = useState("");
+  const [creditCheckLoading, setCreditCheckLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -304,8 +289,6 @@ export default function Home() {
 
     setLoading(true);
     setMessage("");
-    setEvaluation(null);
-    setEvaluationError("");
 
     const response = await fetch("/api/credit-applications", {
       method: "POST",
@@ -325,36 +308,35 @@ export default function Home() {
 
     setCustomer(toCustomerDraft(normalizeCustomer(payload.customer)));
     setSavedApplication(payload.application);
+    setCreditCheck(null);
+    setCreditCheckError("");
     setStep("saved");
     setMessage("Demande de credit enregistree.");
   }
 
-  async function runCreditEvaluation() {
+  async function runCreditCheck() {
     if (!savedApplication) {
-      setEvaluationError("Enregistrez la demande avant de lancer la pre-evaluation.");
       return;
     }
 
-    setEvaluationLoading(true);
-    setEvaluationError("");
-    setEvaluation(null);
+    setCreditCheckLoading(true);
+    setCreditCheckError("");
 
     const response = await fetch("/api/credit/check", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ application_id: savedApplication.application_id }),
     });
-    const payload = (await response.json().catch(() => ({}))) as Partial<CreditEvaluationResult> &
-      ApiErrorPayload;
-    setEvaluationLoading(false);
+    const payload = await response.json().catch(() => ({}));
+    setCreditCheckLoading(false);
 
     if (!response.ok) {
-      const suffix = payload.correlation_id ? ` Reference: ${payload.correlation_id}` : "";
-      setEvaluationError(`${payload.error ?? "Pre-evaluation impossible."}${suffix}`);
+      setCreditCheck(null);
+      setCreditCheckError(payload.error ?? "Pre-evaluation impossible pour le moment.");
       return;
     }
 
-    setEvaluation(payload as CreditEvaluationResult);
+    setCreditCheck(payload);
   }
 
   function resetSearch() {
@@ -365,9 +347,9 @@ export default function Home() {
     setOriginalCustomer(null);
     setCreditRequest(emptyCreditRequest);
     setSavedApplication(null);
-    setEvaluation(null);
-    setEvaluationError("");
-    setEvaluationLoading(false);
+    setCreditCheck(null);
+    setCreditCheckError("");
+    setCreditCheckLoading(false);
     setFieldErrors({});
     setMessage("");
   }
@@ -469,13 +451,13 @@ export default function Home() {
               application={savedApplication}
               saved={step === "saved"}
               loading={loading}
-              evaluation={evaluation}
-              evaluationLoading={evaluationLoading}
-              evaluationError={evaluationError}
+              creditCheck={creditCheck}
+              creditCheckError={creditCheckError}
+              creditCheckLoading={creditCheckLoading}
               onEditCustomer={() => setStep("customer_form")}
               onEditCredit={() => setStep("credit")}
+              onRunCreditCheck={runCreditCheck}
               onConfirm={step === "saved" ? resetSearch : submitApplication}
-              onEvaluate={runCreditEvaluation}
             />
           ) : null}
         </section>
@@ -721,26 +703,26 @@ function ApplicationReview({
   application,
   saved,
   loading,
-  evaluation,
-  evaluationLoading,
-  evaluationError,
+  creditCheck,
+  creditCheckError,
+  creditCheckLoading,
   onEditCustomer,
   onEditCredit,
+  onRunCreditCheck,
   onConfirm,
-  onEvaluate,
 }: {
   customer: CustomerDraft;
   creditRequest: CreditRequestDraft;
   application: CreditApplication | null;
   saved: boolean;
   loading: boolean;
-  evaluation: CreditEvaluationResult | null;
-  evaluationLoading: boolean;
-  evaluationError: string;
+  creditCheck: CreditCheckResult | null;
+  creditCheckError: string;
+  creditCheckLoading: boolean;
   onEditCustomer: () => void;
   onEditCredit: () => void;
+  onRunCreditCheck: () => void;
   onConfirm: () => void;
-  onEvaluate: () => void;
 }) {
   const rows: Array<[string, string]> = [
     ["ID interne banque", customer.bank_customer_id ?? "Genere apres confirmation"],
@@ -766,11 +748,11 @@ function ApplicationReview({
       />
       <InfoGrid rows={rows} />
       {saved ? (
-        <CreditEvaluationPanel
-          evaluation={evaluation}
-          loading={evaluationLoading}
-          error={evaluationError}
-          onEvaluate={onEvaluate}
+        <CreditCheckPanel
+          result={creditCheck}
+          error={creditCheckError}
+          loading={creditCheckLoading}
+          onRun={onRunCreditCheck}
         />
       ) : null}
       <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:justify-end">
@@ -803,73 +785,81 @@ function ApplicationReview({
   );
 }
 
-function CreditEvaluationPanel({
-  evaluation,
-  loading,
+function CreditCheckPanel({
+  result,
   error,
-  onEvaluate,
+  loading,
+  onRun,
 }: {
-  evaluation: CreditEvaluationResult | null;
-  loading: boolean;
+  result: CreditCheckResult | null;
   error: string;
-  onEvaluate: () => void;
+  loading: boolean;
+  onRun: () => void;
 }) {
-  const rows: Array<[string, string]> = evaluation
+  const rows: Array<[string, string]> = result
     ? [
-        ["Revenu mensuel", formatCurrency(evaluation.metrics.monthly_income)],
-        ["Mensualite estimee", formatCurrency(evaluation.metrics.estimated_monthly_payment)],
-        ["Disponible avant credit", formatCurrency(evaluation.metrics.available_before_credit)],
-        ["Disponible apres credit", formatCurrency(evaluation.metrics.available_after_credit)],
-        ["Taux d'endettement", formatRatio(evaluation.metrics.debt_ratio)],
-        ["Duree totale", `${evaluation.metrics.duration_in_months} mois`],
-        ["Reference de traitement", evaluation.correlation_id],
+        ["Decision", decisionLabel(result.decision)],
+        ["Revenu mensuel", formatCurrency(result.metrics.monthly_income)],
+        ["Mensualite estimee", formatCurrency(result.metrics.estimated_monthly_payment)],
+        ["Disponible avant credit", formatCurrency(result.metrics.available_before_credit)],
+        ["Disponible apres credit", formatCurrency(result.metrics.available_after_credit)],
+        ["Taux d'endettement", `${Math.round(result.metrics.debt_ratio * 10000) / 100}%`],
+        ["Duree calculee", `${result.metrics.duration_in_months} mois`],
+        ["Correlation", result.correlation_id],
       ]
     : [];
 
   return (
-    <div className="mt-6 rounded-lg border border-teal-200 bg-teal-50 p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="mt-6 border-t border-slate-200 pt-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-teal-800">
-            Pre-evaluation
-          </p>
-          <p className="mt-2 text-sm leading-6 text-teal-950">
-            Lancez un premier controle automatique base sur les donnees de la demande. Ce resultat
-            reste indicatif.
+          <h3 className="text-lg font-semibold text-slate-950">Pre-evaluation credit</h3>
+          <p className="mt-1 text-sm text-slate-600">
+            Lancez une premiere analyse financiere avant revue bancaire finale.
           </p>
         </div>
         <button
           type="button"
-          onClick={onEvaluate}
+          onClick={onRun}
           disabled={loading}
-          className="h-11 rounded-md bg-teal-700 px-5 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+          className="h-11 rounded-md bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? "Evaluation..." : "Lancer pre-evaluation"}
+          {loading ? "Analyse..." : "Lancer pre-evaluation"}
         </button>
       </div>
-
-      {error ? <p className="mt-4 text-sm font-medium text-red-700">{error}</p> : null}
-
-      {evaluation ? (
-        <div className="mt-5 space-y-5">
-          <div className="rounded-md border border-teal-300 bg-white p-4">
+      {error ? (
+        <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {error}
+        </div>
+      ) : null}
+      {result ? (
+        <>
+          <InfoGrid rows={rows} />
+          <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-              Resultat
+              Motifs
             </p>
-            <p className="mt-2 text-xl font-semibold text-slate-950">
-              {decisionLabels[evaluation.decision]}
-            </p>
-            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-700">
-              {evaluation.reasons.map((reason) => (
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
+              {result.reasons.map((reason) => (
                 <li key={reason}>{reason}</li>
               ))}
             </ul>
           </div>
-          <InfoGrid rows={rows} />
-        </div>
+        </>
       ) : null}
     </div>
   );
+}
+
+function decisionLabel(decision: CreditDecision) {
+  const labels: Record<CreditDecision, string> = {
+    PRE_APPROVED: "Pre-accord",
+    NEEDS_REVIEW: "Revue necessaire",
+    NOT_ELIGIBLE: "Non eligible",
+    REJECTED_INPUT: "Donnees invalides",
+  };
+
+  return labels[decision];
 }
 
 function InfoGrid({ rows }: { rows: Array<[string, string]> }) {
