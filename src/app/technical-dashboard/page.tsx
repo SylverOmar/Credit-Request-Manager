@@ -29,10 +29,10 @@ export default function TechnicalDashboardPage() {
 
   const status = useMemo(
     () => ({
-      label: isStopped ? "Workflow stoppe" : "Workflow actif",
+      label: isStopped ? "Workflow stopped" : "Workflow active",
       detail: isStopped
-        ? "Les nouvelles evaluations sont bloquees jusqu'a relance."
-        : "Les evaluations peuvent etre executees normalement.",
+        ? "New evaluations are blocked until restart."
+        : "Evaluations can run normally.",
       tone: isStopped
         ? "border-red-200 bg-red-50 text-red-800"
         : "border-teal-200 bg-teal-50 text-teal-900",
