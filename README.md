@@ -50,6 +50,22 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+## Docker
+
+Build the container image:
+
+```bash
+docker build -t credit-request-manager .
+```
+
+Run the container with environment variables:
+
+```bash
+docker run --env-file .env.local -p 3000:3000 credit-request-manager
+```
+
+Open `http://localhost:3000`.
+
 ## Validation
 
 ```bash
@@ -58,7 +74,7 @@ npm test
 npm run build
 ```
 
-GitHub Actions runs lint, tests, build, and a Python LangGraph workflow smoke test on pushes and pull requests to `main`.
+GitHub Actions runs lint, tests, build, a Python LangGraph workflow smoke test, and Docker image build checks on pushes and pull requests to `main`.
 
 ## Workflow Assets
 
